@@ -87,8 +87,8 @@ public class FramePreview : Control
     {
         base.Render(context);
 
-        // Draw background
-        context.FillRectangle(new SolidColorBrush(Color.FromRgb(40, 40, 40)), Bounds);
+        // Draw transparent background pattern (checkerboard)
+        DrawCheckerboardBackground(context, Bounds);
 
         if (_frames.Count == 0)
         {
@@ -129,28 +129,37 @@ public class FramePreview : Control
 
         var frame = _frames[_currentFrameIndex];
 
+        // Get trimmed bounds if trim is applied
+        var (sourceX, sourceY, sourceWidth, sourceHeight) = frame.GetTrimmedBounds();
+
         // Calculate scale to fit frame in preview
-        var scaleX = Bounds.Width / frame.Width;
-        var scaleY = Bounds.Height / frame.Height;
+        var scaleX = Bounds.Width / sourceWidth;
+        var scaleY = Bounds.Height / sourceHeight;
         var scale = Math.Min(scaleX, scaleY) * 0.9; // 90% to leave some padding
 
-        var displayWidth = frame.Width * scale;
-        var displayHeight = frame.Height * scale;
+        var displayWidth = sourceWidth * scale;
+        var displayHeight = sourceHeight * scale;
         var x = (Bounds.Width - displayWidth) / 2;
         var y = (Bounds.Height - displayHeight) / 2;
 
-        // Draw frame
-        var sourceRect = new Rect(frame.X, frame.Y, frame.Width, frame.Height);
+        // Draw frame (using trimmed bounds)
+        var sourceRect = new Rect(sourceX, sourceY, sourceWidth, sourceHeight);
         var destRect = new Rect(x, y, displayWidth, displayHeight);
 
         context.DrawImage(_sourceImage, sourceRect, destRect);
 
-        // Draw border
-        var pen = new Pen(Brushes.Cyan, 2);
+        // Draw border (cyan for trimmed, white for original)
+        var borderColor = (frame.TrimLeft + frame.TrimRight + frame.TrimTop + frame.TrimBottom) > 0
+            ? Brushes.Lime  // Green if trimmed
+            : Brushes.Cyan; // Cyan if not trimmed
+        var pen = new Pen(borderColor, 2);
         context.DrawRectangle(null, pen, destRect);
 
-        // Draw frame info
-        var info = $"{_currentFrameIndex + 1}/{_frames.Count} - {frame.Name}";
+        // Draw frame info with trim details
+        var trimInfo = (frame.TrimLeft + frame.TrimRight + frame.TrimTop + frame.TrimBottom) > 0
+            ? $" (trimmed: {sourceWidth}×{sourceHeight})"
+            : "";
+        var info = $"{_currentFrameIndex + 1}/{_frames.Count} - {frame.Name}{trimInfo}";
         var infoText = new FormattedText(
             info,
             System.Globalization.CultureInfo.CurrentCulture,
@@ -173,6 +182,26 @@ public class FramePreview : Control
                 Brushes.Lime);
             
             context.DrawText(playText, new Point(Bounds.Width - 20, 4));
+        }
+    }
+
+    private void DrawCheckerboardBackground(DrawingContext context, Rect bounds)
+    {
+        const int checkerSize = 10;
+        var lightBrush = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+        var darkBrush = new SolidColorBrush(Color.FromRgb(204, 204, 204));
+
+        for (int y = 0; y < bounds.Height; y += checkerSize)
+        {
+            for (int x = 0; x < bounds.Width; x += checkerSize)
+            {
+                var isLight = ((x / checkerSize) + (y / checkerSize)) % 2 == 0;
+                var brush = isLight ? lightBrush : darkBrush;
+                var rect = new Rect(x, y, 
+                    Math.Min(checkerSize, bounds.Width - x), 
+                    Math.Min(checkerSize, bounds.Height - y));
+                context.FillRectangle(brush, rect);
+            }
         }
     }
 

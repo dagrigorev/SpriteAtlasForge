@@ -342,4 +342,32 @@ public partial class MainWindow : Window
             await ViewModel.ExportAtlasCommand.ExecuteAsync(filePath);
         }
     }
+
+    private void OnTreeViewSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel == null)
+            return;
+
+        var treeView = sender as TreeView;
+        if (treeView?.SelectedItem is GroupTreeNode node && node.IsGroup && node.Group != null)
+        {
+            ViewModel.SelectedGroup = node.Group;
+        }
+    }
+
+    private void OnSelectRegionClick(object? sender, RoutedEventArgs e)
+    {
+        if (_imageCanvas != null)
+        {
+            _imageCanvas.EnableSelectionMode();
+        }
+    }
+
+    private void OnClearSelectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (_imageCanvas != null)
+        {
+            _imageCanvas.ClearSelection();
+        }
+    }
 }

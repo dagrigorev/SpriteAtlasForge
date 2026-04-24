@@ -52,30 +52,77 @@
                 <Grid RowDefinitions="Auto,*,Auto">
                     <TextBlock Grid.Row="0" Classes="header" Text="Grid Groups" Margin="0,0,0,8"/>
                     
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding CurrentProject.Groups}"
-                             SelectedItem="{Binding SelectedGroup}"
-                             Background="#252526">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
+                    <TreeView Grid.Row="1"
+                              ItemsSource="{Binding GroupTree}"
+                              Background="#252526"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              SelectionChanged="OnTreeViewSelectionChanged">
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <!-- Icon -->
+                                    <TextBlock Text="{Binding Icon}" 
+                                               FontSize="14"
+                                               IsVisible="{Binding IsCategory}"/>
+                                    
+                                    <!-- Color indicator for groups -->
                                     <Border Width="16" Height="16" 
-                                            Background="{Binding BorderColor}"
-                                            CornerRadius="2"/>
+                                            Background="{Binding Group.BorderColor}"
+                                            CornerRadius="2"
+                                            IsVisible="{Binding IsGroup}"/>
+                                    
+                                    <!-- Name -->
                                     <TextBlock Text="{Binding Name}"/>
-                                    <TextBlock Text="{Binding Type}" 
-                                               Foreground="#888888" 
-                                               FontSize="10"/>
+                                    
+                                    <!-- Frame count for groups -->
+                                    <TextBlock Text="{Binding Group.Frames.Count, StringFormat='({0})'}"
+                                               Foreground="#888888"
+                                               FontSize="10"
+                                               IsVisible="{Binding IsGroup}"/>
                                 </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                        
+                        <TreeView.Styles>
+                            <Style Selector="TreeViewItem:expanded">
+                              <Setter Property="IsExpanded" Value="{Binding (vm:GroupTreeNode).IsExpanded, Mode=TwoWay}"/>
+                            </Style>
+                            <Style Selector="TreeViewItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="#094771"/>
+                            </Style>
+                        </TreeView.Styles>
+                    </TreeView>
                     
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4" Margin="0,8,0,0">
-                        <Button Content="Add" Command="{Binding AddGroupCommand}"/>
-                        <Button Content="Remove" 
-                                Command="{Binding RemoveGroupCommand}"
-                                CommandParameter="{Binding SelectedGroup}"/>
+                    <StackPanel Grid.Row="2" Spacing="4" Margin="0,8,0,0">
+                        <!-- Auto Detect Button -->
+                        <Button Content="🤖 Auto Detect" 
+                                Command="{Binding AutoDetectCommand}"
+                                Classes="primary"
+                                HorizontalAlignment="Stretch"
+                                ToolTip.Tip="Automatically detect and classify sprites"/>
+                        
+                        <!-- Region Selection -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="📐 Select Region" 
+                                    Click="OnSelectRegionClick"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    ToolTip.Tip="Click and drag to select a region for detection"/>
+                            <Button Content="✖" 
+                                    Click="OnClearSelectionClick"
+                                    Width="32"
+                                    ToolTip.Tip="Clear selection"/>
+                        </StackPanel>
+                        
+                        <Separator Margin="0,4"/>
+                        
+                        <!-- Manual Controls -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="Add" Command="{Binding AddGroupCommand}"/>
+                            <Button Content="Remove" 
+                                    Command="{Binding RemoveGroupCommand}"
+                                    CommandParameter="{Binding SelectedGroup}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -214,6 +261,165 @@
                         <TextBlock Classes="label" 
                                    Text="{Binding SelectedGroup.Frames.Count, StringFormat='Frames: {0}'}"
                                    HorizontalAlignment="Center"/>
+
+                        <Separator Margin="0,8"/>
+                        <TextBlock Classes="header" Text="Frame Optimization"/>
+
+                        <!-- Auto Trim Button -->
+                        <Button Content="✂️ Auto-Trim Frames" 
+                                Command="{Binding AutoTrimSelectedGroupCommand}"
+                                HorizontalAlignment="Stretch"
+                                ToolTip.Tip="Automatically detect and trim empty space around sprites"/>
+
+                        <!-- Reset Trim Button -->
+                        <Button Content="↺ Reset Trim" 
+                                Command="{Binding ResetTrimSelectedGroupCommand}"
+                                HorizontalAlignment="Stretch"
+                                ToolTip.Tip="Reset trim values to zero"/>
+
+                        <!-- Toggle Background Removal -->
+                        <Button Content="🎨 Toggle Background Removal" 
+                                Command="{Binding ToggleBackgroundRemovalCommand}"
+                                HorizontalAlignment="Stretch"
+                                ToolTip.Tip="Enable/disable background color removal"/>
+
+                        <Separator Margin="0,16"/>
+                        <TextBlock Classes="header" Text="Individual Frames"/>
+
+                        <!-- Frame List -->
+                        <ListBox ItemsSource="{Binding SelectedGroup.Frames}"
+                                 SelectedItem="{Binding SelectedFrame}"
+                                 Height="200"
+                                 Background="#252526"
+                                 Margin="0,8">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Name}" 
+                                                   Width="120"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Width, StringFormat='W:{0}'}" 
+                                                   Width="45"
+                                                   Foreground="#888888"
+                                                   FontSize="11"/>
+                                        <TextBlock Text="{Binding Height, StringFormat='H:{0}'}" 
+                                                   Width="45"
+                                                   Foreground="#888888"
+                                                   FontSize="11"/>
+                                        <Border Width="12" Height="12"
+                                                Background="{Binding BackgroundColor}"
+                                                BorderBrush="#666666"
+                                                BorderThickness="1"
+                                                CornerRadius="2"
+                                                IsVisible="{Binding BackgroundColor, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Selected Frame Editor -->
+                        <StackPanel Spacing="8" 
+                                    Margin="0,8"
+                                    IsVisible="{Binding SelectedFrame, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            
+                            <TextBlock Classes="label" Text="Selected Frame Properties:"/>
+
+                            <!-- Frame Name -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="label" Text="Name:" FontSize="11"/>
+                                <TextBox Text="{Binding SelectedFrame.Name}"/>
+                            </StackPanel>
+
+                            <!-- Position -->
+                            <Grid ColumnDefinitions="*,8,*">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Classes="label" Text="X:" FontSize="11"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.X}" 
+                                                   Minimum="0" Increment="1"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Classes="label" Text="Y:" FontSize="11"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.Y}" 
+                                                   Minimum="0" Increment="1"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Size -->
+                            <Grid ColumnDefinitions="*,8,*">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Classes="label" Text="Width:" FontSize="11"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.Width}" 
+                                                   Minimum="1" Increment="1"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Classes="label" Text="Height:" FontSize="11"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.Height}" 
+                                                   Minimum="1" Increment="1"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Trim -->
+                            <TextBlock Classes="label" Text="Trim (pixels):" FontSize="11"/>
+                            <Grid ColumnDefinitions="*,4,*,4,*,4,*">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="L" FontSize="10" Foreground="#888888"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.TrimLeft}" 
+                                                   Minimum="0" Increment="1"
+                                                   FormatString="0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Text="R" FontSize="10" Foreground="#888888"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.TrimRight}" 
+                                                   Minimum="0" Increment="1"
+                                                   FormatString="0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Spacing="2">
+                                    <TextBlock Text="T" FontSize="10" Foreground="#888888"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.TrimTop}" 
+                                                   Minimum="0" Increment="1"
+                                                   FormatString="0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="6" Spacing="2">
+                                    <TextBlock Text="B" FontSize="10" Foreground="#888888"/>
+                                    <NumericUpDown Value="{Binding SelectedFrame.TrimBottom}" 
+                                                   Minimum="0" Increment="1"
+                                                   FormatString="0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Background Color -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="label" Text="Background Color:" FontSize="11"/>
+                                <TextBox Text="{Binding SelectedFrame.BackgroundColor}"
+                                         Watermark="#FF00FF"/>
+                            </StackPanel>
+
+                            <!-- Remove Background -->
+                            <CheckBox Content="Remove Background"
+                                      IsChecked="{Binding SelectedFrame.RemoveBackground}"/>
+
+                            <!-- Effective Size Display -->
+                            <Border Background="#1E1E1E"
+                                    BorderBrush="#3E3E42"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="8,4">
+                                <TextBlock FontSize="11" Foreground="#888888">
+                                    <Run Text="Effective: "/>
+                                    <Run Text="{Binding SelectedFrame.Width}"/>
+                                    <Run Text="-"/>
+                                    <Run Text="{Binding SelectedFrame.TrimLeft}"/>
+                                    <Run Text="-"/>
+                                    <Run Text="{Binding SelectedFrame.TrimRight}"/>
+                                    <Run Text="×"/>
+                                    <Run Text="{Binding SelectedFrame.Height}"/>
+                                    <Run Text="-"/>
+                                    <Run Text="{Binding SelectedFrame.TrimTop}"/>
+                                    <Run Text="-"/>
+                                    <Run Text="{Binding SelectedFrame.TrimBottom}"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
 
                         <Separator Margin="0,16"/>
                         <TextBlock Classes="header" Text="Frame Preview"/>
