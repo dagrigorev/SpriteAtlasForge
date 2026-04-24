@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "texture": "war_and_purr_assets.png",
+  "groups": {
+    "player_cat": {
+      "type": "character",
+      "animations": {
+        "idle": {
+          "fps": 8,
+          "loop": true,
+          "frames": [
+            {
+              "name": "idle_000",
+              "x": 600,
+              "y": 20,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.125,
+              "tags": []
+            },
+            {
+              "name": "idle_001",
+              "x": 760,
+              "y": 20,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.125,
+              "tags": []
+            },
+            {
+              "name": "idle_002",
+              "x": 920,
+              "y": 20,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.125,
+              "tags": []
+            }
+          ]
+        },
+        "walk": {
+          "fps": 10,
+          "loop": true,
+          "frames": [
+            {
+              "name": "walk_000",
+              "x": 600,
+              "y": 180,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.1,
+              "tags": []
+            },
+            {
+              "name": "walk_001",
+              "x": 760,
+              "y": 180,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.1,
+              "tags": []
+            }
+          ]
+        },
+        "attack": {
+          "fps": 12,
+          "loop": false,
+          "frames": [
+            {
+              "name": "attack_000",
+              "x": 600,
+              "y": 340,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.083,
+              "hitboxes": [
+                {
+                  "x": 80,
+                  "y": 60,
+                  "w": 60,
+                  "h": 40,
+                  "type": "hitbox"
+                }
+              ],
+              "tags": ["attack"]
+            }
+          ]
+        }
+      }
+    },
+    "tiles": {
+      "type": "tileset",
+      "frames": {
+        "ground_left": {
+          "x": 270,
+          "y": 20,
+          "w": 64,
+          "h": 64,
+          "kind": "ground_left",
+          "solid": true
+        },
+        "ground_center": {
+          "x": 334,
+          "y": 20,
+          "w": 64,
+          "h": 64,
+          "kind": "ground_center",
+          "solid": true
+        },
+        "ground_right": {
+          "x": 398,
+          "y": 20,
+          "w": 64,
+          "h": 64,
+          "kind": "ground_right",
+          "solid": true
+        },
+        "platform": {
+          "x": 270,
+          "y": 84,
+          "w": 64,
+          "h": 64,
+          "kind": "platform",
+          "solid": true
+        },
+        "decoration_bush": {
+          "x": 334,
+          "y": 148,
+          "w": 64,
+          "h": 64,
+          "kind": "decoration",
+          "solid": false
+        }
+      }
+    },
+    "enemies": {
+      "type": "enemy",
+      "animations": {
+        "idle": {
+          "fps": 6,
+          "loop": true,
+          "frames": [
+            {
+              "name": "enemy_idle_000",
+              "x": 880,
+              "y": 20,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.166,
+              "tags": []
+            },
+            {
+              "name": "enemy_idle_001",
+              "x": 1040,
+              "y": 20,
+              "w": 160,
+              "h": 160,
+              "pivotX": 80,
+              "pivotY": 140,
+              "duration": 0.166,
+              "tags": []
+            }
+          ]
+        }
+      }
+    },
+    "parallax_backgrounds": {
+      "type": "parallax",
+      "layers": [
+        {
+          "name": "far_mountains",
+          "x": 10,
+          "y": 90,
+          "w": 256,
+          "h": 64,
+          "scrollFactor": 0.1,
+          "repeatX": true,
+          "repeatY": false,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        },
+        {
+          "name": "mid_mountains",
+          "x": 10,
+          "y": 168,
+          "w": 256,
+          "h": 64,
+          "scrollFactor": 0.3,
+          "repeatX": true,
+          "repeatY": false,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        },
+        {
+          "name": "hills_forests",
+          "x": 10,
+          "y": 232,
+          "w": 256,
+          "h": 64,
+          "scrollFactor": 0.5,
+          "repeatX": true,
+          "repeatY": false,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        }
+      ]
+    }
+  }
+}

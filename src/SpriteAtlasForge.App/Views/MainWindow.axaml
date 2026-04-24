@@ -1,0 +1,266 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SpriteAtlasForge.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
+        x:Class="SpriteAtlasForge.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding WindowTitle}"
+        Width="1600" Height="900"
+        Background="#1E1E1E">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0" Background="#2D2D30">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New Project" Command="{Binding NewProjectCommand}" InputGesture="Ctrl+N"/>
+                <MenuItem Header="_Open Image..." Click="OnOpenImageClick" InputGesture="Ctrl+O"/>
+                <MenuItem Header="Open _Project..." Click="OnOpenProjectClick" InputGesture="Ctrl+Shift+O"/>
+                <Separator/>
+                <MenuItem Header="_Save Project" Click="OnSaveProjectClick" InputGesture="Ctrl+S"/>
+                <MenuItem Header="Save Project _As..." Click="OnSaveProjectClick"/>
+                <Separator/>
+                <MenuItem Header="_Export Atlas..." Click="OnExportAtlasClick" InputGesture="Ctrl+E"/>
+                <Separator/>
+                <MenuItem Header="E_xit"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="_Redo" InputGesture="Ctrl+Y"/>
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="Toggle _Grid" Command="{Binding ToggleGridCommand}" InputGesture="G"/>
+                <MenuItem Header="Zoom _In" Command="{Binding ZoomInCommand}" InputGesture="Ctrl+OemPlus"/>
+                <MenuItem Header="Zoom _Out" Command="{Binding ZoomOutCommand}" InputGesture="Ctrl+OemMinus"/>
+                <MenuItem Header="_Fit to Screen" Command="{Binding FitToScreenCommand}" InputGesture="F"/>
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_Validate Project" Command="{Binding ValidateProjectCommand}" InputGesture="Ctrl+Shift+V"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="250,*,300">
+            
+            <!-- Left Panel - Groups List -->
+            <Border Grid.Column="0" Classes="panel" Margin="4">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Row="0" Classes="header" Text="Grid Groups" Margin="0,0,0,8"/>
+                    
+                    <ListBox Grid.Row="1" 
+                             ItemsSource="{Binding CurrentProject.Groups}"
+                             SelectedItem="{Binding SelectedGroup}"
+                             Background="#252526">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border Width="16" Height="16" 
+                                            Background="{Binding BorderColor}"
+                                            CornerRadius="2"/>
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text="{Binding Type}" 
+                                               Foreground="#888888" 
+                                               FontSize="10"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4" Margin="0,8,0,0">
+                        <Button Content="Add" Command="{Binding AddGroupCommand}"/>
+                        <Button Content="Remove" 
+                                Command="{Binding RemoveGroupCommand}"
+                                CommandParameter="{Binding SelectedGroup}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Center Panel - Canvas -->
+            <Border Grid.Column="1" Classes="panel" Margin="4">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Toolbar -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
+                        <Button Content="🔍+" Command="{Binding ZoomInCommand}" ToolTip.Tip="Zoom In (Ctrl++)"/>
+                        <Button Content="🔍-" Command="{Binding ZoomOutCommand}" ToolTip.Tip="Zoom Out (Ctrl+-)"/>
+                        <Button Content="⊞" Command="{Binding FitToScreenCommand}" ToolTip.Tip="Fit to Screen (F)"/>
+                        <Separator/>
+                        <ToggleButton Content="Grid" IsChecked="{Binding ShowGrid}"/>
+                        <Separator/>
+                        <TextBlock Text="{Binding CanvasZoom, StringFormat='Zoom: {0:P0}'}" 
+                                   VerticalAlignment="Center" 
+                                   Margin="8,0"/>
+                    </StackPanel>
+
+                    <!-- Canvas Area -->
+                    <Border Grid.Row="1" 
+                            Background="#1E1E1E" 
+                            BorderBrush="#3E3E42" 
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            ClipToBounds="True">
+                        <Grid ClipToBounds="True">
+                            <TextBlock Text="Open an image to begin (Ctrl+O)" 
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"
+                                       Foreground="#666666"
+                                       FontSize="16"
+                                       IsVisible="{Binding !HasSourceImage}"/>
+                            
+                            <!-- Canvas control will be added programmatically -->
+                            <Panel x:Name="CanvasContainer" ClipToBounds="True"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Right Panel - Properties -->
+            <Border Grid.Column="2" Classes="panel" Margin="4">
+                <ScrollViewer>
+                    <StackPanel Spacing="8" IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Classes="header" Text="Group Properties"/>
+                        
+                        <!-- Group Name -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Name:"/>
+                            <TextBox Text="{Binding SelectedGroup.Name}"/>
+                        </StackPanel>
+
+                        <!-- Group Type -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Type:"/>
+                            <ComboBox ItemsSource="{Binding GridGroupTypes}" 
+                                      SelectedItem="{Binding SelectedGroup.Type}"
+                                      HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+
+                        <!-- Border Color -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Border Color:"/>
+                            <TextBox Text="{Binding SelectedGroup.BorderColor}"/>
+                        </StackPanel>
+
+                        <Separator Margin="0,8"/>
+                        <TextBlock Classes="header" Text="Grid Definition"/>
+
+                        <!-- Origin -->
+                        <Grid ColumnDefinitions="*,8,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Classes="label" Text="Origin X:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.OriginX}" 
+                                               Minimum="0" Increment="1"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Classes="label" Text="Origin Y:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.OriginY}" 
+                                               Minimum="0" Increment="1"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Cell Size -->
+                        <Grid ColumnDefinitions="*,8,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Classes="label" Text="Cell Width:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.CellWidth}" 
+                                               Minimum="1" Increment="1"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Classes="label" Text="Cell Height:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.CellHeight}" 
+                                               Minimum="1" Increment="1"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Columns and Rows -->
+                        <Grid ColumnDefinitions="*,8,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Classes="label" Text="Columns:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.Columns}" 
+                                               Minimum="1" Maximum="100" Increment="1"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Classes="label" Text="Rows:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.Rows}" 
+                                               Minimum="1" Maximum="100" Increment="1"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Spacing and Padding -->
+                        <Grid ColumnDefinitions="*,8,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Classes="label" Text="Spacing:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.Spacing}" 
+                                               Minimum="0" Increment="1"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Classes="label" Text="Padding:"/>
+                                <NumericUpDown Value="{Binding SelectedGroup.GridDefinition.Padding}" 
+                                               Minimum="0" Increment="1"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Generate Frames Button -->
+                        <Button Content="Generate Frames" 
+                                Command="{Binding GenerateFramesCommand}"
+                                Classes="primary"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,8,0,0"/>
+
+                        <!-- Frame Count -->
+                        <TextBlock Classes="label" 
+                                   Text="{Binding SelectedGroup.Frames.Count, StringFormat='Frames: {0}'}"
+                                   HorizontalAlignment="Center"/>
+
+                        <Separator Margin="0,16"/>
+                        <TextBlock Classes="header" Text="Frame Preview"/>
+
+                        <!-- Preview Container -->
+                        <Border Background="#282828" 
+                                BorderBrush="#3E3E42" 
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Height="150"
+                                Margin="0,8">
+                            <Panel x:Name="PreviewContainer"/>
+                        </Border>
+
+                        <!-- Preview Controls -->
+                        <Grid ColumnDefinitions="*,*,*" Margin="0,4">
+                            <Button Grid.Column="0" Content="▶ Play" x:Name="PlayButton" Click="OnPlayPreview"/>
+                            <Button Grid.Column="1" Content="⏸ Pause" x:Name="PauseButton" Click="OnPausePreview"/>
+                            <Button Grid.Column="2" Content="⏹ Stop" x:Name="StopButton" Click="OnStopPreview"/>
+                        </Grid>
+
+                        <!-- FPS Control -->
+                        <StackPanel Spacing="4" Margin="0,8,0,0">
+                            <TextBlock Classes="label" Text="Preview FPS:"/>
+                            <NumericUpDown Value="{Binding SelectedGroup.PreviewFps}" 
+                                           Minimum="1" Maximum="60" Increment="1"
+                                           ValueChanged="OnPreviewFpsChanged"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="#007ACC" Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding StatusText}" 
+                           Foreground="White"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                    <TextBlock Text="{Binding ValidationMessages.Count, StringFormat='Validation Messages: {0}'}" 
+                               Foreground="White"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding ValidationMessages.Count}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

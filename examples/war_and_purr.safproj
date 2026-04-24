@@ -1,0 +1,182 @@
+{
+  "version": "1.0",
+  "projectName": "War & Purr Assets",
+  "sourceImage": {
+    "filePath": "war_and_purr_assets.png",
+    "width": 3840,
+    "height": 2160,
+    "format": "PNG",
+    "fileSizeBytes": 5242880
+  },
+  "groups": [
+    {
+      "id": "player-cat-group",
+      "name": "Player Cat",
+      "type": "character",
+      "borderColor": "#00FF00",
+      "gridDefinition": {
+        "originX": 600,
+        "originY": 20,
+        "cellWidth": 160,
+        "cellHeight": 160,
+        "spacing": 0,
+        "padding": 0,
+        "columns": 8,
+        "rows": 8
+      },
+      "frames": [],
+      "animations": [
+        {
+          "name": "idle",
+          "type": "idle",
+          "fps": 8.0,
+          "loop": true,
+          "frames": []
+        },
+        {
+          "name": "walk",
+          "type": "walk",
+          "fps": 10.0,
+          "loop": true,
+          "frames": []
+        },
+        {
+          "name": "attack",
+          "type": "attack1",
+          "fps": 12.0,
+          "loop": false,
+          "frames": []
+        }
+      ],
+      "parallaxLayers": [],
+      "exportEnabled": true,
+      "previewFps": 8.0,
+      "previewLoop": true,
+      "allowOverlap": false,
+      "scalePreview": 1.0
+    },
+    {
+      "id": "tiles-group",
+      "name": "Tiles & Terrain",
+      "type": "tile",
+      "borderColor": "#FFFF00",
+      "gridDefinition": {
+        "originX": 270,
+        "originY": 20,
+        "cellWidth": 64,
+        "cellHeight": 64,
+        "spacing": 0,
+        "padding": 0,
+        "columns": 8,
+        "rows": 8
+      },
+      "frames": [],
+      "animations": [],
+      "parallaxLayers": [],
+      "exportEnabled": true,
+      "previewFps": 8.0,
+      "previewLoop": true,
+      "allowOverlap": false,
+      "scalePreview": 1.0
+    },
+    {
+      "id": "enemies-group",
+      "name": "Enemies",
+      "type": "enemy",
+      "borderColor": "#FF0000",
+      "gridDefinition": {
+        "originX": 880,
+        "originY": 20,
+        "cellWidth": 160,
+        "cellHeight": 160,
+        "spacing": 0,
+        "padding": 0,
+        "columns": 10,
+        "rows": 8
+      },
+      "frames": [],
+      "animations": [],
+      "parallaxLayers": [],
+      "exportEnabled": true,
+      "previewFps": 8.0,
+      "previewLoop": true,
+      "allowOverlap": false,
+      "scalePreview": 1.0
+    },
+    {
+      "id": "parallax-group",
+      "name": "Parallax Backgrounds",
+      "type": "parallax",
+      "borderColor": "#00FFFF",
+      "gridDefinition": {
+        "originX": 10,
+        "originY": 90,
+        "cellWidth": 256,
+        "cellHeight": 64,
+        "spacing": 0,
+        "padding": 0,
+        "columns": 1,
+        "rows": 8
+      },
+      "frames": [],
+      "animations": [],
+      "parallaxLayers": [
+        {
+          "name": "far_mountains",
+          "x": 10,
+          "y": 90,
+          "width": 256,
+          "height": 64,
+          "scrollFactor": 0.1,
+          "repeatX": true,
+          "repeatY": false,
+          "renderOrder": 0,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        },
+        {
+          "name": "mid_mountains",
+          "x": 10,
+          "y": 168,
+          "width": 256,
+          "height": 64,
+          "scrollFactor": 0.3,
+          "repeatX": true,
+          "repeatY": false,
+          "renderOrder": 1,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        },
+        {
+          "name": "hills_forests",
+          "x": 10,
+          "y": 232,
+          "width": 256,
+          "height": 64,
+          "scrollFactor": 0.5,
+          "repeatX": true,
+          "repeatY": false,
+          "renderOrder": 2,
+          "opacity": 1.0,
+          "tint": "#FFFFFF"
+        }
+      ],
+      "exportEnabled": true,
+      "previewFps": 8.0,
+      "previewLoop": true,
+      "allowOverlap": false,
+      "scalePreview": 1.0
+    }
+  ],
+  "exportSettings": {
+    "outputDirectory": "./output",
+    "atlasFileName": "war_and_purr_atlas.json",
+    "prettyPrint": true,
+    "includeDisabledFrames": false,
+    "validateBeforeExport": true,
+    "generateTextureReference": true,
+    "textureFileName": "war_and_purr_assets.png"
+  },
+  "createdAt": "2026-04-24T10:00:00Z",
+  "modifiedAt": "2026-04-24T10:30:00Z"
+}
