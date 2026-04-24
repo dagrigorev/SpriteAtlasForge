@@ -52,30 +52,64 @@
                 <Grid RowDefinitions="Auto,*,Auto">
                     <TextBlock Grid.Row="0" Classes="header" Text="Grid Groups" Margin="0,0,0,8"/>
                     
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding CurrentProject.Groups}"
-                             SelectedItem="{Binding SelectedGroup}"
-                             Background="#252526">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
+                    <TreeView Grid.Row="1"
+                              ItemsSource="{Binding GroupTree}"
+                              Background="#252526"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              SelectionChanged="OnTreeViewSelectionChanged">
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <!-- Icon -->
+                                    <TextBlock Text="{Binding Icon}" 
+                                               FontSize="14"
+                                               IsVisible="{Binding IsCategory}"/>
+                                    
+                                    <!-- Color indicator for groups -->
                                     <Border Width="16" Height="16" 
-                                            Background="{Binding BorderColor}"
-                                            CornerRadius="2"/>
+                                            Background="{Binding Group.BorderColor}"
+                                            CornerRadius="2"
+                                            IsVisible="{Binding IsGroup}"/>
+                                    
+                                    <!-- Name -->
                                     <TextBlock Text="{Binding Name}"/>
-                                    <TextBlock Text="{Binding Type}" 
-                                               Foreground="#888888" 
-                                               FontSize="10"/>
+                                    
+                                    <!-- Frame count for groups -->
+                                    <TextBlock Text="{Binding Group.Frames.Count, StringFormat='({0})'}"
+                                               Foreground="#888888"
+                                               FontSize="10"
+                                               IsVisible="{Binding IsGroup}"/>
                                 </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                        
+                        <TreeView.Styles>
+                            <Style Selector="TreeViewItem:expanded">
+                                <Setter Property="IsExpanded" Value="{Binding (vm:Item).IsExpanded, Mode=TwoWay}"/>
+                            </Style>
+                            <Style Selector="TreeViewItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="#094771"/>
+                            </Style>
+                        </TreeView.Styles>
+                    </TreeView>
                     
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4" Margin="0,8,0,0">
-                        <Button Content="Add" Command="{Binding AddGroupCommand}"/>
-                        <Button Content="Remove" 
-                                Command="{Binding RemoveGroupCommand}"
-                                CommandParameter="{Binding SelectedGroup}"/>
+                    <StackPanel Grid.Row="2" Spacing="4" Margin="0,8,0,0">
+                        <!-- Auto Detect Button -->
+                        <Button Content="🤖 Auto Detect" 
+                                Command="{Binding AutoDetectCommand}"
+                                Classes="primary"
+                                HorizontalAlignment="Stretch"
+                                ToolTip.Tip="Automatically detect and classify sprites"/>
+                        
+                        <Separator Margin="0,4"/>
+                        
+                        <!-- Manual Controls -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="Add" Command="{Binding AddGroupCommand}"/>
+                            <Button Content="Remove" 
+                                    Command="{Binding RemoveGroupCommand}"
+                                    CommandParameter="{Binding SelectedGroup}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>

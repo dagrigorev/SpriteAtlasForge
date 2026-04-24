@@ -14,6 +14,8 @@ public partial class MainViewModel : ObservableObject
     private readonly ImageLoader _imageLoader;
     private readonly ProjectValidator _validator;
     private readonly AtlasExporter _exporter;
+    private readonly AutoDetectionService _autoDetection;
+    private readonly ImageDataExtractor _imageExtractor;
 
     [ObservableProperty]
     private AtlasProject _currentProject = new();
@@ -39,6 +41,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasUnsavedChanges;
 
+    [ObservableProperty]
+    private ObservableCollection<GroupTreeNode> _groupTree = new();
+
     public string WindowTitle => HasUnsavedChanges 
         ? $"SpriteAtlasForge - {CurrentProject.ProjectName}*" 
         : $"SpriteAtlasForge - {CurrentProject.ProjectName}";
@@ -55,8 +60,36 @@ public partial class MainViewModel : ObservableObject
         _imageLoader = new ImageLoader();
         _validator = new ProjectValidator();
         _exporter = new AtlasExporter();
+        _autoDetection = new AutoDetectionService();
+        _imageExtractor = new ImageDataExtractor();
 
         CurrentProject.PropertyChanged += (s, e) => MarkProjectAsModified();
+        CurrentProject.Groups.CollectionChanged += (s, e) => RebuildGroupTree();
+        
+        RebuildGroupTree();
+    }
+
+    private void RebuildGroupTree()
+    {
+        GroupTree.Clear();
+
+        // Group by type
+        var groupsByType = CurrentProject.Groups
+            .GroupBy(g => g.Type)
+            .OrderBy(g => g.Key);
+
+        foreach (var typeGroup in groupsByType)
+        {
+            var categoryNode = GroupTreeNode.CreateCategory(typeGroup.Key);
+            
+            foreach (var group in typeGroup.OrderBy(g => g.Name))
+            {
+                var groupNode = GroupTreeNode.CreateGroupNode(group);
+                categoryNode.Children.Add(groupNode);
+            }
+            
+            GroupTree.Add(categoryNode);
+        }
     }
 
     [RelayCommand]
@@ -247,6 +280,46 @@ public partial class MainViewModel : ObservableObject
         StatusText = result.IsValid 
             ? "Validation passed" 
             : $"Validation: {result.ErrorCount} error(s), {result.WarningCount} warning(s)";
+    }
+
+    [RelayCommand]
+    private async Task AutoDetect()
+    {
+        if (CurrentProject.SourceImage == null)
+        {
+            StatusText = "No image loaded - open an image first";
+            return;
+        }
+
+        try
+        {
+            StatusText = "Analyzing image... Please wait...";
+            
+            // Extract pixel data
+            var (imageData, width, height) = _imageExtractor.ExtractPixelData(CurrentProject.SourceImage.FilePath);
+            
+            // Run detection algorithm
+            var result = await Task.Run(() => _autoDetection.DetectSprites(imageData, width, height));
+            
+            // Clear existing groups
+            CurrentProject.Groups.Clear();
+            
+            // Add detected groups
+            foreach (var group in result.SuggestedGroups)
+            {
+                CurrentProject.Groups.Add(group);
+            }
+            
+            // Select first group
+            SelectedGroup = result.SuggestedGroups.FirstOrDefault();
+            
+            MarkProjectAsModified();
+            StatusText = $"Auto-detect complete: {result.SuggestedGroups.Count} groups, {result.Sprites.Count} sprites";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Auto-detect error: {ex.Message}";
+        }
     }
 
     private void MarkProjectAsModified()
