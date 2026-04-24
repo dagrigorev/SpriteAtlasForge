@@ -354,4 +354,20 @@ public partial class MainWindow : Window
             ViewModel.SelectedGroup = node.Group;
         }
     }
+
+    private void OnSelectRegionClick(object? sender, RoutedEventArgs e)
+    {
+        if (_imageCanvas != null)
+        {
+            _imageCanvas.EnableSelectionMode();
+        }
+    }
+
+    private void OnClearSelectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (_imageCanvas != null)
+        {
+            _imageCanvas.ClearSelection();
+        }
+    }
 }

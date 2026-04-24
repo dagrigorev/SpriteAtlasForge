@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly AtlasExporter _exporter;
     private readonly AutoDetectionService _autoDetection;
     private readonly ImageDataExtractor _imageExtractor;
+    private readonly BackgroundRemovalService _backgroundRemoval;
 
     [ObservableProperty]
     private AtlasProject _currentProject = new();
@@ -44,6 +45,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<GroupTreeNode> _groupTree = new();
 
+    [ObservableProperty]
+    private Avalonia.Rect? _selectedRegion;
+
     public string WindowTitle => HasUnsavedChanges 
         ? $"SpriteAtlasForge - {CurrentProject.ProjectName}*" 
         : $"SpriteAtlasForge - {CurrentProject.ProjectName}";
@@ -62,6 +66,7 @@ public partial class MainViewModel : ObservableObject
         _exporter = new AtlasExporter();
         _autoDetection = new AutoDetectionService();
         _imageExtractor = new ImageDataExtractor();
+        _backgroundRemoval = new BackgroundRemovalService();
 
         CurrentProject.PropertyChanged += (s, e) => MarkProjectAsModified();
         CurrentProject.Groups.CollectionChanged += (s, e) => RebuildGroupTree();
@@ -293,33 +298,123 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            StatusText = "Analyzing image... Please wait...";
+            string regionInfo = SelectedRegion.HasValue 
+                ? $" (Region: {(int)SelectedRegion.Value.Width}x{(int)SelectedRegion.Value.Height})"
+                : "";
+            StatusText = $"Analyzing image with computer vision{regionInfo}... Please wait...";
             
             // Extract pixel data
             var (imageData, width, height) = _imageExtractor.ExtractPixelData(CurrentProject.SourceImage.FilePath);
             
-            // Run detection algorithm
-            var result = await Task.Run(() => _autoDetection.DetectSprites(imageData, width, height));
+            // Convert Avalonia.Rect? to OpenCV-compatible ROI
+            OpenCvSharp.Rect? roi = null;
+            if (SelectedRegion.HasValue)
+            {
+                roi = new OpenCvSharp.Rect(
+                    (int)SelectedRegion.Value.X,
+                    (int)SelectedRegion.Value.Y,
+                    (int)SelectedRegion.Value.Width,
+                    (int)SelectedRegion.Value.Height);
+            }
+            
+            // Run computer vision detection
+            var result = await Task.Run(() => _autoDetection.DetectSprites(imageData, width, height, roi));
+            
+            if (result.Clusters.Count == 0)
+            {
+                StatusText = "No sprite patterns detected - try adjusting your sprite sheet";
+                return;
+            }
             
             // Clear existing groups
             CurrentProject.Groups.Clear();
             
-            // Add detected groups
-            foreach (var group in result.SuggestedGroups)
+            // Convert detected clusters to GridGroups (with auto background detection)
+            foreach (var cluster in result.Clusters)
             {
+                var group = _autoDetection.CreateGridGroup(cluster, imageData, width, height);
                 CurrentProject.Groups.Add(group);
             }
             
             // Select first group
-            SelectedGroup = result.SuggestedGroups.FirstOrDefault();
+            SelectedGroup = CurrentProject.Groups.FirstOrDefault();
             
             MarkProjectAsModified();
-            StatusText = $"Auto-detect complete: {result.SuggestedGroups.Count} groups, {result.Sprites.Count} sprites";
+            StatusText = $"✓ {result.Summary}";
         }
         catch (Exception ex)
         {
             StatusText = $"Auto-detect error: {ex.Message}";
         }
+    }
+
+    [RelayCommand]
+    private async Task AutoTrimSelectedGroup()
+    {
+        if (SelectedGroup == null || CurrentProject.SourceImage == null)
+        {
+            StatusText = "Select a group first";
+            return;
+        }
+
+        try
+        {
+            StatusText = "Applying auto-trim...";
+
+            var (imageData, width, height) = _imageExtractor.ExtractPixelData(CurrentProject.SourceImage.FilePath);
+            
+            await Task.Run(() => _backgroundRemoval.AutoTrimFrames(
+                imageData, width, height, 
+                SelectedGroup.Frames, 
+                detectBackground: true));
+
+            MarkProjectAsModified();
+            StatusText = $"✓ Auto-trim applied to {SelectedGroup.Frames.Count} frames";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Auto-trim error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ResetTrimSelectedGroup()
+    {
+        if (SelectedGroup == null)
+        {
+            StatusText = "Select a group first";
+            return;
+        }
+
+        foreach (var frame in SelectedGroup.Frames)
+        {
+            frame.ResetTrim();
+        }
+
+        MarkProjectAsModified();
+        StatusText = $"✓ Trim reset for {SelectedGroup.Frames.Count} frames";
+    }
+
+    [RelayCommand]
+    private void ToggleBackgroundRemoval()
+    {
+        if (SelectedGroup == null)
+        {
+            StatusText = "Select a group first";
+            return;
+        }
+
+        bool newState = !SelectedGroup.Frames.FirstOrDefault()?.RemoveBackground ?? true;
+        
+        foreach (var frame in SelectedGroup.Frames)
+        {
+            frame.RemoveBackground = newState;
+        }
+
+        MarkProjectAsModified();
+        StatusText = newState 
+            ? $"✓ Background removal enabled" 
+            : $"✓ Background removal disabled";
     }
 
     private void MarkProjectAsModified()
