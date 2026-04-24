@@ -85,7 +85,7 @@
                         
                         <TreeView.Styles>
                             <Style Selector="TreeViewItem:expanded">
-                                <Setter Property="IsExpanded" Value="{Binding (vm:Item).IsExpanded, Mode=TwoWay}"/>
+                              <Setter Property="IsExpanded" Value="{Binding (vm:GroupTreeNode).IsExpanded, Mode=TwoWay}"/>
                             </Style>
                             <Style Selector="TreeViewItem:selected /template/ ContentPresenter">
                                 <Setter Property="Background" Value="#094771"/>
