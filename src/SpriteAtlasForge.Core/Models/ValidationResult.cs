@@ -25,6 +25,43 @@ public class ValidationMessage
         Message = message;
         FrameName = frameName;
     }
+
+    /// <summary>
+    /// Gets icon for the severity level
+    /// </summary>
+    public string SeverityIcon => Severity switch
+    {
+        ValidationSeverity.Info => "ℹ️",
+        ValidationSeverity.Warning => "⚠️",
+        ValidationSeverity.Error => "❌",
+        _ => "•"
+    };
+
+    /// <summary>
+    /// Gets color for the severity level
+    /// </summary>
+    public string SeverityColor => Severity switch
+    {
+        ValidationSeverity.Info => "#3794FF",     // Blue
+        ValidationSeverity.Warning => "#FFB900",  // Orange
+        ValidationSeverity.Error => "#E81123",    // Red
+        _ => "#FFFFFF"
+    };
+
+    /// <summary>
+    /// Gets formatted source location (group and frame if available)
+    /// </summary>
+    public string Source
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(FrameName))
+                return $"Group: {GroupName} → Frame: {FrameName}";
+            if (!string.IsNullOrEmpty(GroupName))
+                return $"Group: {GroupName}";
+            return string.Empty;
+        }
+    }
 }
 
 public class ValidationResult

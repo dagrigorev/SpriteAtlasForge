@@ -104,14 +104,15 @@ public class ProjectValidator
             result.AddError(group.Id, group.Name, $"Frame '{frame.Name}' has invalid dimensions", frame.Name);
         }
 
-        if (!frame.IsWithinBounds(sourceImage.Width, sourceImage.Height))
-        {
-            result.AddError(
-                group.Id, 
-                group.Name, 
-                $"Frame '{frame.Name}' is outside image bounds ({frame.X},{frame.Y},{frame.Width},{frame.Height})",
-                frame.Name);
-        }
+        // Не нужно валидировать Out Of Bounds в grid
+        //if (!frame.IsWithinBounds(sourceImage.Width, sourceImage.Height))
+        //{
+        //    result.AddError(
+        //        group.Id, 
+        //        group.Name, 
+        //        $"Frame '{frame.Name}' is outside image bounds ({frame.X},{frame.Y},{frame.Width},{frame.Height})",
+        //        frame.Name);
+        //}
     }
 
     private void ValidateCharacterGroup(GridGroup group, ValidationResult result)

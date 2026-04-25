@@ -46,6 +46,8 @@ public partial class MainWindow : Window
             // Subscribe to property changes to redraw canvas
             ViewModel.PropertyChanged += (s, args) =>
             {
+                System.Diagnostics.Debug.WriteLine($"[ViewModel.PropertyChanged] {args.PropertyName}");
+                
                 if (args.PropertyName == nameof(ViewModel.ShowGrid))
                 {
                     _imageCanvas?.InvalidateVisual();
@@ -55,9 +57,18 @@ public partial class MainWindow : Window
                     _imageCanvas?.InvalidateVisual();
                     UpdateFramePreview();
                 }
+                else if (args.PropertyName == nameof(ViewModel.SelectedFrame))
+                {
+                    _imageCanvas?.InvalidateVisual();
+                }
                 else if (args.PropertyName == nameof(ViewModel.CurrentProject))
                 {
                     UpdateFramePreview();
+                    UpdateWindowTitle();
+                }
+                else if (args.PropertyName == nameof(ViewModel.HasUnsavedChanges))
+                {
+                    UpdateWindowTitle();
                 }
             };
 
@@ -81,6 +92,9 @@ public partial class MainWindow : Window
             {
                 SubscribeToGroup(group);
             }
+            
+            // Initial window title
+            UpdateWindowTitle();
         }
     }
 
@@ -152,6 +166,24 @@ public partial class MainWindow : Window
     }
 
     private MainViewModel? ViewModel => DataContext as MainViewModel;
+
+    /// <summary>
+    /// Updates window title to show current project name and unsaved changes
+    /// </summary>
+    private void UpdateWindowTitle()
+    {
+        if (ViewModel == null)
+            return;
+
+        var hasUnsaved = ViewModel.HasUnsavedChanges ? "*" : "";
+        var fileName = !string.IsNullOrEmpty(ViewModel.CurrentProject.FilePath)
+            ? Path.GetFileName(ViewModel.CurrentProject.FilePath)
+            : "Untitled";
+
+        Title = $"{fileName}{hasUnsaved} - SpriteAtlasForge";
+        
+        System.Diagnostics.Debug.WriteLine($"[UpdateWindowTitle] {Title}");
+    }
 
     private void OnOpenImageClick(object? sender, RoutedEventArgs e)
     {
@@ -266,6 +298,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Shows Open Project dialog and fully synchronizes UI
+    /// </summary>
     private async Task OpenProjectDialog()
     {
         if (ViewModel == null)
@@ -287,7 +322,49 @@ public partial class MainWindow : Window
         if (files.Count > 0)
         {
             var filePath = files[0].Path.LocalPath;
+            
+            System.Diagnostics.Debug.WriteLine($"[OpenProjectDialog] User selected: {filePath}");
+            
+            // Execute ViewModel command (loads data)
             await ViewModel.OpenProjectCommand.ExecuteAsync(filePath);
+            
+            // Synchronize Canvas
+            if (ViewModel.CurrentProject.SourceImage != null)
+            {
+                var imagePath = ViewModel.CurrentProject.SourceImage.FilePath;
+                
+                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OpenProjectDialog] Reloading canvas: {imagePath}");
+                    
+                    // Reload image in canvas
+                    _imageCanvas?.LoadImage(imagePath);
+                    
+                    // Reload image in preview
+                    _framePreview?.LoadSourceImage(imagePath);
+                    
+                    // Force canvas redraw with loaded groups
+                    _imageCanvas?.InvalidateVisual();
+                }
+            }
+            
+            // Synchronize Frame Preview
+            UpdateFramePreview();
+            
+            // Reset view state
+            if (ViewModel.FitToScreenCommand.CanExecute(null))
+            {
+                ViewModel.FitToScreenCommand.Execute(null);
+                _imageCanvas?.SetZoom(ViewModel.CanvasZoom);
+            }
+            
+            // Reset preview playback
+            _framePreview?.Stop();
+            
+            // Update window title
+            UpdateWindowTitle();
+            
+            System.Diagnostics.Debug.WriteLine($"[OpenProjectDialog] UI synchronized");
         }
     }
 

@@ -5,6 +5,8 @@ using SpriteAtlasForge.Core.Export;
 using SpriteAtlasForge.Core.Models;
 using SpriteAtlasForge.Core.Services;
 using SpriteAtlasForge.Core.Validation;
+using SpriteAtlasForge.App.Models;
+using System.Text.Json;
 
 namespace SpriteAtlasForge.App.ViewModels;
 
@@ -48,6 +50,27 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private Avalonia.Rect? _selectedRegion;
 
+    // Logging system
+    [ObservableProperty]
+    private ObservableCollection<LogEntry> _logEntries = new();
+
+    [ObservableProperty]
+    private bool _showDebugLogs = true;
+
+    [ObservableProperty]
+    private bool _showInfoLogs = true;
+
+    [ObservableProperty]
+    private bool _showWarningLogs = true;
+
+    [ObservableProperty]
+    private bool _showErrorLogs = true;
+
+    [ObservableProperty]
+    private bool _autoScrollLogs = true;
+
+    private const int MaxLogEntries = 1000; // Limit log entries to prevent memory issues
+
     public string WindowTitle => HasUnsavedChanges 
         ? $"SpriteAtlasForge - {CurrentProject.ProjectName}*" 
         : $"SpriteAtlasForge - {CurrentProject.ProjectName}";
@@ -72,10 +95,20 @@ public partial class MainViewModel : ObservableObject
         CurrentProject.Groups.CollectionChanged += (s, e) => RebuildGroupTree();
         
         RebuildGroupTree();
+        
+        // Initial log entry
+        LogInfo("SpriteAtlasForge initialized", "System");
+        LogDebug($".NET Version: {Environment.Version}", "System");
     }
 
+    /// <summary>
+    /// Rebuilds the TreeView structure from current project groups
+    /// Ensures UI reflects actual data state
+    /// </summary>
     private void RebuildGroupTree()
     {
+        System.Diagnostics.Debug.WriteLine($"[RebuildGroupTree] Rebuilding with {CurrentProject.Groups.Count} groups");
+        
         GroupTree.Clear();
 
         // Group by type
@@ -91,10 +124,14 @@ public partial class MainViewModel : ObservableObject
             {
                 var groupNode = GroupTreeNode.CreateGroupNode(group);
                 categoryNode.Children.Add(groupNode);
+                
+                System.Diagnostics.Debug.WriteLine($"[RebuildGroupTree] Added: {group.Name} ({group.Frames.Count} frames)");
             }
             
             GroupTree.Add(categoryNode);
         }
+        
+        System.Diagnostics.Debug.WriteLine($"[RebuildGroupTree] Complete");
     }
 
     [RelayCommand]
@@ -141,6 +178,10 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    /// <summary>
+    /// Saves the current project to .safproj file
+    /// </summary>
+    /// <param name="filePath">Full path where to save</param>
     private async Task SaveProject(string? filePath)
     {
         if (string.IsNullOrEmpty(filePath))
@@ -148,16 +189,28 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[SaveProject] Saving to: {filePath}");
+            
             await _projectSerializer.SaveProjectAsync(CurrentProject, filePath);
+            
             HasUnsavedChanges = false;
-            StatusText = $"Project saved: {Path.GetFileName(filePath)}";
+            CurrentProject.FilePath = filePath;
+            StatusText = $"✓ Project saved: {Path.GetFileName(filePath)}";
+            
+            System.Diagnostics.Debug.WriteLine($"[SaveProject] Success");
         }
         catch (Exception ex)
         {
-            StatusText = $"Error saving project: {ex.Message}";
+            StatusText = $"❌ Error saving project: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[SaveProject] Error: {ex}");
         }
     }
 
+    /// <summary>
+    /// Opens an existing project from .safproj file
+    /// Fully reloads and synchronizes all UI elements
+    /// </summary>
+    /// <param name="filePath">Full path to .safproj file</param>
     [RelayCommand]
     private async Task OpenProject(string? filePath)
     {
@@ -166,18 +219,110 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            CurrentProject = await _projectSerializer.LoadProjectAsync(filePath);
+            LogInfo($"Loading project: {Path.GetFileName(filePath)}", "OpenProject");
+            
+            // STEP 1: Load project data from JSON
+            var loadedProject = await _projectSerializer.LoadProjectAsync(filePath);
+            
+            if (loadedProject == null)
+            {
+                LogError("Failed to load project: Invalid file", "OpenProject");
+                StatusText = "❌ Failed to load project: Invalid file";
+                return;
+            }
+
+            LogSuccess($"Loaded {loadedProject.Groups.Count} groups", "OpenProject");
+
+            // STEP 2: Reload source image
+            if (loadedProject.SourceImage != null)
+            {
+                var imagePath = loadedProject.SourceImage.FilePath;
+                
+                if (!string.IsNullOrEmpty(imagePath))
+                {
+                    if (File.Exists(imagePath))
+                    {
+                        LogInfo($"Loading image: {Path.GetFileName(imagePath)}", "OpenProject");
+                        await OpenImageCommand.ExecuteAsync(imagePath);
+                        
+                        // IMPORTANT: Restore the loaded project 
+                        // (OpenImage creates a new project, we want the loaded one)
+                        CurrentProject = loadedProject;
+                    }
+                    else
+                    {
+                        LogWarning($"Source image not found: {Path.GetFileName(imagePath)}", "OpenProject");
+                        StatusText = $"⚠️ Source image not found: {Path.GetFileName(imagePath)}";
+                        CurrentProject = loadedProject;
+                    }
+                }
+                else
+                {
+                    CurrentProject = loadedProject;
+                }
+            }
+            else
+            {
+                CurrentProject = loadedProject;
+            }
+
+            // STEP 3: Clear all selections
             SelectedGroup = null;
             SelectedFrame = null;
+            SelectedRegion = null;
+
+            // STEP 4: Rebuild UI Tree
+            LogDebug("Rebuilding UI tree", "OpenProject");
+            RebuildGroupTree();
+
+            // STEP 5: Subscribe to new groups
+            CurrentProject.Groups.CollectionChanged += (s, e) =>
+            {
+                RebuildGroupTree();
+            };
+
+            foreach (var group in CurrentProject.Groups)
+            {
+                group.PropertyChanged += (s, e) =>
+                {
+                    RebuildGroupTree();
+                };
+            }
+
+            // STEP 6: Notify all UI bindings
+            OnPropertyChanged(nameof(CurrentProject));
+            OnPropertyChanged(nameof(HasSourceImage));
+            
+            // STEP 7: Mark as clean (no unsaved changes)
             HasUnsavedChanges = false;
-            StatusText = $"Project loaded: {Path.GetFileName(filePath)}";
+            CurrentProject.FilePath = filePath;
+
+            // STEP 8: Update status
+            StatusText = $"✓ Project loaded: {Path.GetFileName(filePath)} ({CurrentProject.Groups.Count} groups)";
+            LogSuccess($"Project loaded successfully: {Path.GetFileName(filePath)}", "OpenProject");
+        }
+        catch (FileNotFoundException ex)
+        {
+            var fileName = Path.GetFileName(ex.FileName ?? filePath);
+            LogError($"File not found: {fileName}", "OpenProject", ex);
+            StatusText = $"❌ File not found: {fileName}";
+        }
+        catch (JsonException ex)
+        {
+            LogError("Invalid project file format", "OpenProject", ex);
+            StatusText = $"❌ Invalid project file format";
         }
         catch (Exception ex)
         {
-            StatusText = $"Error loading project: {ex.Message}";
+            LogError($"Error loading project: {ex.Message}", "OpenProject", ex);
+            StatusText = $"❌ Error loading project: {ex.Message}";
         }
     }
 
+    /// <summary>
+    /// Exports the atlas to JSON format
+    /// </summary>
+    /// <param name="outputPath">Full path where to export</param>
     [RelayCommand]
     private async Task ExportAtlas(string? outputPath)
     {
@@ -186,6 +331,8 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[ExportAtlas] Starting export to: {outputPath}");
+            
             // Validate first
             var validationResult = _validator.Validate(CurrentProject);
             
@@ -197,16 +344,24 @@ public partial class MainViewModel : ObservableObject
 
             if (!validationResult.IsValid)
             {
-                StatusText = $"Validation failed: {validationResult.ErrorCount} error(s)";
+                StatusText = $"❌ Validation failed: {validationResult.ErrorCount} error(s)";
+                System.Diagnostics.Debug.WriteLine($"[ExportAtlas] Validation failed");
                 return;
             }
 
+            // Count total frames
+            var totalFrames = CurrentProject.Groups.Sum(g => g.Frames.Count);
+            System.Diagnostics.Debug.WriteLine($"[ExportAtlas] Exporting {totalFrames} frames from {CurrentProject.Groups.Count} groups");
+
             await _exporter.ExportToJsonAsync(CurrentProject, outputPath);
-            StatusText = $"Atlas exported: {Path.GetFileName(outputPath)}";
+            
+            StatusText = $"✓ Atlas exported: {Path.GetFileName(outputPath)}";
+            System.Diagnostics.Debug.WriteLine($"[ExportAtlas] Success!");
         }
         catch (Exception ex)
         {
-            StatusText = $"Error exporting atlas: {ex.Message}";
+            StatusText = $"❌ Error exporting atlas: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[ExportAtlas] Error: {ex}");
         }
     }
 
@@ -271,20 +426,46 @@ public partial class MainViewModel : ObservableObject
         StatusText = "Reset zoom to 100%";
     }
 
+    /// <summary>
+    /// Validates the current project and displays validation messages
+    /// </summary>
     [RelayCommand]
     private void ValidateProject()
     {
+        LogInfo("Starting project validation...", "Validation");
+        
         var result = _validator.Validate(CurrentProject);
         
         ValidationMessages.Clear();
         foreach (var msg in result.Messages)
         {
             ValidationMessages.Add(msg);
+            
+            // Also log to log panel
+            switch (msg.Severity)
+            {
+                case ValidationSeverity.Error:
+                    LogError($"{msg.Message} ({msg.Source})", "Validation");
+                    break;
+                case ValidationSeverity.Warning:
+                    LogWarning($"{msg.Message} ({msg.Source})", "Validation");
+                    break;
+                case ValidationSeverity.Info:
+                    LogInfo($"{msg.Message} ({msg.Source})", "Validation");
+                    break;
+            }
         }
 
-        StatusText = result.IsValid 
-            ? "Validation passed" 
-            : $"Validation: {result.ErrorCount} error(s), {result.WarningCount} warning(s)";
+        if (result.IsValid)
+        {
+            StatusText = "✓ Validation passed - no issues found";
+            LogSuccess($"Validation passed - no issues found", "Validation");
+        }
+        else
+        {
+            StatusText = $"⚠️ Validation: {result.ErrorCount} error(s), {result.WarningCount} warning(s)";
+            LogWarning($"Validation found {result.ErrorCount} error(s), {result.WarningCount} warning(s)", "Validation");
+        }
     }
 
     [RelayCommand]
@@ -434,4 +615,109 @@ public partial class MainViewModel : ObservableObject
     {
         StatusText = $"Zoom: {value:P0}";
     }
+
+    #region Logging System
+
+    /// <summary>
+    /// Adds a debug log entry
+    /// </summary>
+    public void LogDebug(string message, string category = "")
+    {
+        AddLog(LogLevel.Debug, message, category);
+        System.Diagnostics.Debug.WriteLine($"[{category}] {message}");
+    }
+
+    /// <summary>
+    /// Adds an info log entry
+    /// </summary>
+    public void LogInfo(string message, string category = "")
+    {
+        AddLog(LogLevel.Info, message, category);
+        System.Diagnostics.Debug.WriteLine($"[{category}] {message}");
+    }
+
+    /// <summary>
+    /// Adds a success log entry
+    /// </summary>
+    public void LogSuccess(string message, string category = "")
+    {
+        AddLog(LogLevel.Success, message, category);
+        System.Diagnostics.Debug.WriteLine($"[{category}] ✓ {message}");
+    }
+
+    /// <summary>
+    /// Adds a warning log entry
+    /// </summary>
+    public void LogWarning(string message, string category = "")
+    {
+        AddLog(LogLevel.Warning, message, category);
+        System.Diagnostics.Debug.WriteLine($"[{category}] ⚠️ {message}");
+    }
+
+    /// <summary>
+    /// Adds an error log entry
+    /// </summary>
+    public void LogError(string message, string category = "", Exception? exception = null)
+    {
+        var fullMessage = exception != null 
+            ? $"{message}: {exception.Message}" 
+            : message;
+        
+        AddLog(LogLevel.Error, fullMessage, category);
+        System.Diagnostics.Debug.WriteLine($"[{category}] ❌ {fullMessage}");
+        
+        if (exception != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[{category}] Exception: {exception}");
+        }
+    }
+
+    /// <summary>
+    /// Adds a log entry to the collection
+    /// </summary>
+    private void AddLog(LogLevel level, string message, string category)
+    {
+        var entry = new LogEntry(level, message, category);
+        
+        // Add to collection (on UI thread)
+        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            LogEntries.Add(entry);
+            
+            // Trim old entries if exceeding max
+            while (LogEntries.Count > MaxLogEntries)
+            {
+                LogEntries.RemoveAt(0);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Clears all log entries
+    /// </summary>
+    [RelayCommand]
+    private void ClearLogs()
+    {
+        LogEntries.Clear();
+        LogInfo("Logs cleared", "System");
+    }
+
+    /// <summary>
+    /// Gets filtered log entries based on level toggles
+    /// </summary>
+    public IEnumerable<LogEntry> FilteredLogs
+    {
+        get
+        {
+            return LogEntries.Where(log =>
+                (log.Level == LogLevel.Debug && ShowDebugLogs) ||
+                (log.Level == LogLevel.Info && ShowInfoLogs) ||
+                (log.Level == LogLevel.Success && ShowInfoLogs) ||
+                (log.Level == LogLevel.Warning && ShowWarningLogs) ||
+                (log.Level == LogLevel.Error && ShowErrorLogs)
+            );
+        }
+    }
+
+    #endregion
 }

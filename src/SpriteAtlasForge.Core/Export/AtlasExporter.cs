@@ -200,22 +200,65 @@ public class AtlasExporter
         return result;
     }
 
+    /// <summary>
+    /// Builds export data for a single frame with validation and trim support
+    /// </summary>
+    /// <param name="frame">The sprite frame to export</param>
+    /// <returns>Dictionary ready for JSON serialization</returns>
     private Dictionary<string, object> BuildFrameData(SpriteFrame frame)
     {
+        // Validate frame
+        if (frame == null)
+        {
+            System.Diagnostics.Debug.WriteLine("[Export] Warning: Null frame encountered");
+            return new Dictionary<string, object>();
+        }
+
+        // Use trimmed bounds if available
+        var hasTrim = frame.TrimLeft + frame.TrimRight + frame.TrimTop + frame.TrimBottom > 0;
+        var (frameX, frameY, frameW, frameH) = hasTrim
+            ? frame.GetTrimmedBounds()
+            : (frame.X, frame.Y, frame.Width, frame.Height);
+
         var data = new Dictionary<string, object>
         {
-            ["name"] = frame.Name,
-            ["x"] = frame.X,
-            ["y"] = frame.Y,
-            ["w"] = frame.Width,
-            ["h"] = frame.Height
+            ["name"] = frame.Name ?? $"frame_{frame.X}_{frame.Y}",
+            ["x"] = frameX,
+            ["y"] = frameY,
+            ["w"] = frameW,
+            ["h"] = frameH
         };
 
+        // Add trim info if present
+        if (hasTrim)
+        {
+            data["trimLeft"] = frame.TrimLeft;
+            data["trimRight"] = frame.TrimRight;
+            data["trimTop"] = frame.TrimTop;
+            data["trimBottom"] = frame.TrimBottom;
+            data["originalW"] = frame.Width;
+            data["originalH"] = frame.Height;
+        }
+
+        // Add background color if present
+        if (!string.IsNullOrEmpty(frame.BackgroundColor))
+        {
+            data["backgroundColor"] = frame.BackgroundColor;
+        }
+
+        // Add pivot if present
         if (frame.Pivot != null)
         {
-            var (pivotX, pivotY) = frame.Pivot.ToPixels(frame.Width, frame.Height);
-            data["pivotX"] = pivotX;
-            data["pivotY"] = pivotY;
+            try
+            {
+                var (pivotX, pivotY) = frame.Pivot.ToPixels(frameW, frameH);
+                data["pivotX"] = pivotX;
+                data["pivotY"] = pivotY;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Export] Pivot calculation error: {ex.Message}");
+            }
         }
 
         if (frame.Duration != 0.125) // Only include if not default

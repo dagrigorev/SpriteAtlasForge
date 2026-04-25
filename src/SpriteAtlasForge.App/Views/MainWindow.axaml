@@ -127,9 +127,9 @@
                 </Grid>
             </Border>
 
-            <!-- Center Panel - Canvas -->
+            <!-- Center Panel - Canvas & Logs -->
             <Border Grid.Column="1" Classes="panel" Margin="4">
-                <Grid RowDefinitions="Auto,*">
+                <Grid RowDefinitions="Auto,*,220">
                     <!-- Toolbar -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
                         <Button Content="🔍+" Command="{Binding ZoomInCommand}" ToolTip.Tip="Zoom In (Ctrl++)"/>
@@ -160,6 +160,109 @@
                             
                             <!-- Canvas control will be added programmatically -->
                             <Panel x:Name="CanvasContainer" ClipToBounds="True"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Log Panel -->
+                    <Border Grid.Row="2" 
+                            Background="#1E1E1E" 
+                            BorderBrush="#3E3E42" 
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Margin="0,4,0,0">
+                        <Grid RowDefinitions="Auto,*">
+                            <!-- Log Header with Controls -->
+                            <Border Grid.Row="0" 
+                                    Background="#2D2D30" 
+                                    BorderBrush="#3E3E42"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="8,4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" 
+                                               Text="📋 Logs" 
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+                                    
+                                    <!-- Filter Toggles -->
+                                    <StackPanel Grid.Column="1" 
+                                                Orientation="Horizontal" 
+                                                Spacing="8" 
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <CheckBox Content="🔍 Debug" 
+                                                  IsChecked="{Binding ShowDebugLogs}"
+                                                  Foreground="#8E8E93"/>
+                                        <CheckBox Content="ℹ️ Info" 
+                                                  IsChecked="{Binding ShowInfoLogs}"
+                                                  Foreground="#3794FF"/>
+                                        <CheckBox Content="⚠️ Warning" 
+                                                  IsChecked="{Binding ShowWarningLogs}"
+                                                  Foreground="#FFB900"/>
+                                        <CheckBox Content="❌ Error" 
+                                                  IsChecked="{Binding ShowErrorLogs}"
+                                                  Foreground="#E81123"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Action Buttons -->
+                                    <StackPanel Grid.Column="2" 
+                                                Orientation="Horizontal" 
+                                                Spacing="4"
+                                                VerticalAlignment="Center">
+                                        <ToggleButton Content="📜" 
+                                                      IsChecked="{Binding AutoScrollLogs}"
+                                                      ToolTip.Tip="Auto-scroll to latest"
+                                                      Width="32" Height="24"/>
+                                        <Button Content="🗑️" 
+                                                Command="{Binding ClearLogsCommand}"
+                                                ToolTip.Tip="Clear logs"
+                                                Width="32" Height="24"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Log Entries List -->
+                            <ScrollViewer Grid.Row="1" 
+                                          x:Name="LogScrollViewer"
+                                          Background="#252526">
+                                <ItemsControl ItemsSource="{Binding LogEntries}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent"
+                                                    BorderBrush="#3E3E42"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="8,4">
+                                                <Grid ColumnDefinitions="70,20,80,*">
+                                                    <!-- Timestamp -->
+                                                    <TextBlock Grid.Column="0" 
+                                                               Text="{Binding FormattedTime}"
+                                                               Foreground="#808080"
+                                                               FontFamily="Consolas"
+                                                               FontSize="11"/>
+                                                    
+                                                    <!-- Icon -->
+                                                    <TextBlock Grid.Column="1" 
+                                                               Text="{Binding Icon}"
+                                                               FontSize="12"/>
+                                                    
+                                                    <!-- Category -->
+                                                    <TextBlock Grid.Column="2" 
+                                                               Text="{Binding Category}"
+                                                               Foreground="{Binding LevelColor}"
+                                                               FontWeight="Bold"
+                                                               FontSize="11"/>
+                                                    
+                                                    <!-- Message -->
+                                                    <TextBlock Grid.Column="3" 
+                                                               Text="{Binding Message}"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="#CCCCCC"
+                                                               FontSize="11"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </Grid>
                     </Border>
                 </Grid>
@@ -421,7 +524,111 @@
                             </Border>
                         </StackPanel>
 
-                        <Separator Margin="0,16"/>
+                        <!-- Validation Messages Section -->
+                        <Border Background="#2D2D30"
+                                BorderBrush="#3E3E42"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,16,0,8">
+                            <StackPanel Spacing="8">
+                                <!-- Header -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="header" 
+                                               Text="⚠️ Validation"
+                                               Foreground="#FFB900"/>
+                                    <Border Grid.Column="1"
+                                            Background="#FFB900"
+                                            CornerRadius="10"
+                                            Padding="8,2"
+                                            IsVisible="{Binding ValidationMessages.Count}">
+                                        <TextBlock Text="{Binding ValidationMessages.Count}"
+                                                   FontWeight="Bold"
+                                                   FontSize="11"
+                                                   Foreground="#000000"/>
+                                    </Border>
+                                </Grid>
+                                
+                                <Separator Background="#3E3E42"/>
+                                
+                                <!-- Validation Button (always visible) -->
+                                <Button Content="🔍 Validate Project"
+                                        Command="{Binding ValidateProjectCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        Classes="primary"
+                                        ToolTip.Tip="Check project for errors and warnings"/>
+                                
+                                <!-- Messages List (only when has messages) -->
+                                <Border IsVisible="{Binding ValidationMessages.Count}"
+                                        Background="#1E1E1E"
+                                        BorderBrush="#3E3E42"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="4">
+                                    <ScrollViewer MaxHeight="250">
+                                        <ItemsControl ItemsSource="{Binding ValidationMessages}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="Transparent"
+                                                            BorderBrush="#3E3E42"
+                                                            BorderThickness="0,0,0,1"
+                                                            Padding="8,6"
+                                                            Margin="0,2">
+                                                        <StackPanel Spacing="4">
+                                                            <!-- Icon + Message -->
+                                                            <Grid ColumnDefinitions="24,*">
+                                                                <TextBlock Grid.Column="0"
+                                                                           Text="{Binding SeverityIcon}"
+                                                                           FontSize="16"
+                                                                           VerticalAlignment="Top"
+                                                                           Margin="0,0,4,0"/>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding Message}"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{Binding SeverityColor}"
+                                                                           FontSize="12"
+                                                                           LineHeight="16"/>
+                                                            </Grid>
+                                                            
+                                                            <!-- Source/Location -->
+                                                            <TextBlock Text="{Binding Source}"
+                                                                       Foreground="#808080"
+                                                                       FontSize="10"
+                                                                       Margin="24,0,0,0"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                                
+                                <!-- Empty state message - показывается когда нет ошибок -->
+                                <Border Background="#1E1E1E"
+                                        BorderBrush="#10893E"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="12,8"
+                                        Margin="0,4"
+                                        IsVisible="{Binding !ValidationMessages.Count}">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="✅"
+                                                   FontSize="16"
+                                                   Margin="0,0,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="No validation issues"
+                                                   Foreground="#10893E"
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Separator Margin="0,8"/>
                         <TextBlock Classes="header" Text="Frame Preview"/>
 
                         <!-- Preview Container -->
